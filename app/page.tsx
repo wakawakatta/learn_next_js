@@ -139,7 +139,7 @@ function MyApp() {
   );
 }
 
-function CountButton({ count, onClick }) {
+function CountButton({count, onClick}) {
   return (
     <button onClick={onClick}>
       Clicked {count} times
