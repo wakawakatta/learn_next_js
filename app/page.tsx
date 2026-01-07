@@ -69,7 +69,7 @@ function OrgSrc() {
   );
 }
 
-function Profile() {
+function ProfileState() {
   return (
     <>
       <h1>{user.name}</h1>
@@ -139,7 +139,7 @@ function MyApp() {
   );
 }
 
-function CountButton({count: any, onClick}) {
+function CountButton({count, onClick}: {count: number, onClick: () => void}){
   return (
     <button onClick={onClick}>
       Clicked {count} times
@@ -147,6 +147,25 @@ function CountButton({count: any, onClick}) {
   );
 }
 
+function PlaneHtml() {
+  return (
+    <div>
+      <h1>My First Component</h1>
+      <ol>
+        <li>Components: UI Building Blocks</li>
+        <li>Defining a Component</li>
+        <li>Using a Component</li>
+      </ol>
+    </div>
+  );
+}
+
+function Congratulations () {
+  return  <h1>Good job!</h1>;
+}
+
+import Gallery from './Gallery.tsx';
+import { Profile } from './Gallery.tsx';
 
 export default function Home() {
     return (
@@ -155,6 +174,7 @@ export default function Home() {
       <ShoppingList />
       <MyButton />
       <MyApp />
+      <PlaneHtml />
       </>
   );
 }
