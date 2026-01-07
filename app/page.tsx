@@ -164,13 +164,14 @@ function Congratulations () {
   return  <h1>Good job!</h1>;
 }
 
-import Gallery from './Gallery.tsx';
-import { Profile } from './Gallery.tsx';
+import Gallery from './Gallery';
+import { Profile } from './Gallery';
 
 export default function Home() {
     return (
       <>
       <Profile />
+      <Gallery />
       <ShoppingList />
       <MyButton />
       <MyApp />
