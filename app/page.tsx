@@ -167,15 +167,117 @@ function Congratulations () {
 import Gallery from './Gallery';
 import { Profile } from './Gallery';
 
+function Avatar() {
+  const avatar = 'https://i.imgur.com/7vQD0fPs.jpg';
+  const description = 'Gregorio Y. Zara';
+  return (
+    <img
+      className="avatar"
+      src={avatar}
+      alt={description}
+    />
+  );
+}
+
+const today = new Date();
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat(
+    'en-US',
+    { weekday: 'long' }
+  ).format(date);
+}
+
+function TodoListTitle() {
+  return (
+    <h1>To Do List for {formatDate(today)}</h1>
+  );
+}
+
+const person = {
+  name: 'Gregorio Y. Zara',
+  theme: {
+    backgroundColor: 'black',
+    color: 'pink'
+  }
+};
+
+function TodoList() {
+  return (
+    <div style={person.theme}>
+      <h1>{person.name}'s Todos</h1>
+      <img
+        className="avatar"
+        src="https://i.imgur.com/7vQD0fPs.jpg"
+        alt="Gregorio Y. Zara"
+      />
+      <ul>
+        <li>Improve the videophone</li>
+        <li>Prepare aeronautics lectures</li>
+        <li>Work on the alcohol-fuelled engine</li>
+      </ul>
+    </div>
+  );
+}
+
+
+const drinks = {
+  tea: {
+    part: 'leaf',
+    caffeine: '15–70 mg/cup',
+    age: '4,000+ years'
+  },
+  coffee: {
+    part: 'bean',
+    caffeine: '80–185 mg/cup',
+    age: '1,000+ years'
+  }
+};
+
+function Drink({ name }: { name: 'tea' | 'coffee' }) {
+  const info = drinks[name];
+  return (
+    <section>
+      <h1>{name}</h1>
+      <dl>
+        <dt>Part of plant</dt>
+        <dd>{info.part}</dd>
+        <dt>Caffeine content</dt>
+        <dd>{info.caffeine}</dd>
+        <dt>Age</dt>
+        <dd>{info.age}</dd>
+      </dl>
+    </section>
+  );
+}
+
+function DrinkList() {
+  return (
+    <div>
+      <Drink name="tea" />
+      <Drink name="coffee" />
+    </div>
+  );
+}
+
+import Link from 'next/link'
+
 export default function Home() {
     return (
       <>
+      <li>
+      <Link href='/ticTacToe'>Play Tic Tac Toe</Link>
+      </li>
+      <DrinkList />
+      <TodoListTitle />
+      <TodoList />
       <Profile />
       <Gallery />
       <ShoppingList />
       <MyButton />
       <MyApp />
       <PlaneHtml />
+      <Avatar />
       </>
   );
 }
