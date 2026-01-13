@@ -268,6 +268,12 @@ export default function Home() {
       <li>
       <Link href='/ticTacToe'>Play Tic Tac Toe</Link>
       </li>
+      <li>
+      <Link href='/blocks'>Play Blocks</Link>
+      </li>
+      <li>
+      <Link href='/blocksOne'>Play Blocks(1player)</Link>
+      </li>
       <DrinkList />
       <TodoListTitle />
       <TodoList />
