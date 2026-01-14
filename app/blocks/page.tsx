@@ -259,10 +259,10 @@ export default function Blocks() {
   }
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
-      <h1 className="text-4xl font-bold mb-4">Blokus Game - Room: {roomId}</h1>
+    <div className="p-4 md:p-8 bg-gray-100 min-h-screen">
+      <h1 className="text-2xl md:text-4xl font-bold mb-4">Blokus Game - Room: {roomId}</h1>
 
-      <div className="mb-6 grid grid-cols-2 gap-8">
+      <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
         <div>
           <h2 className="text-2xl font-semibold mb-2">Current Player: {players[currentPlayer]?.name || `Player ${currentPlayer + 1}`}</h2>
           <div className={`w-16 h-16 rounded ${PLAYER_COLORS[currentPlayer]}`}></div>
@@ -442,10 +442,12 @@ function GameBoard({
   piece,
   currentPlayer
 }: GameBoardProps) {
+  const cellSize = `${100 / BOARD_SIZE}%`;
+  
   return (
-    <div className="inline-block border-4 border-gray-400 bg-white shadow-lg">
+    <div className="w-full max-w-4xl mx-auto border-4 border-gray-400 bg-white shadow-lg" style={{ aspectRatio: '1' }}>
       {board.map((row, rowIndex) => (
-        <div key={rowIndex} className="flex">
+        <div key={rowIndex} className="flex w-full">
           {row.map((cell, colIndex) => (
             <div
               key={`${rowIndex}-${colIndex}`}
@@ -455,6 +457,7 @@ function GameBoard({
               onMouseLeave={() => {
                 // ドラッグ中に別の操作を止める
               }}
+              className="flex-1 aspect-square"
             >
               <Cell
                 value={cell}
@@ -506,7 +509,7 @@ function Cell({ value, isDraggingOver, canPlace, showPreview, previewColor }: Ce
 
   return (
     <button
-      className={`w-8 h-8 border border-gray-300 ${bgClass} hover:opacity-80 transition-opacity ${
+      className={`w-full h-full border border-gray-300 ${bgClass} hover:opacity-80 transition-opacity ${
         isDraggingOver ? 'ring-2 ring-yellow-500' : ''
       }`}
     />

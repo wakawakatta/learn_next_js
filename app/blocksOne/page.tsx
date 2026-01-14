@@ -252,10 +252,10 @@ export default function BlocksOne() {
   const rotatedPiece = getRotatedPiece(selectedPieceIndex, selectedRotation);
 
   return (
-    <div className="p-8 bg-gray-100 min-h-screen">
-      <h1 className="text-4xl font-bold mb-4">Blokus One Player</h1>
+    <div className="p-4 md:p-8 bg-gray-100 min-h-screen">
+      <h1 className="text-2xl md:text-4xl font-bold mb-4">Blokus One Player</h1>
 
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-6 md:mb-8">
         {PLAYERS.map((player) => (
           <div
             key={player}
@@ -362,15 +362,16 @@ function GameBoard({
   currentPlayer,
 }: GameBoardProps) {
   return (
-    <div className="inline-block border-4 border-gray-800 bg-white">
+    <div className="w-full max-w-4xl border-4 border-gray-800 bg-white shadow-lg" style={{ aspectRatio: '1' }}>
       {board.map((row, rowIndex) => (
-        <div key={rowIndex} className="flex">
+        <div key={rowIndex} className="flex w-full">
           {row.map((cell, colIndex) => (
             <div
               key={`${rowIndex}-${colIndex}`}
               onMouseDown={() => onMouseDown(rowIndex, colIndex)}
               onMouseMove={(e) => onMouseMove(e, rowIndex, colIndex)}
               onMouseUp={() => onMouseUp(rowIndex, colIndex)}
+              className="flex-1 aspect-square"
             >
               <Cell
                 value={cell}
@@ -414,7 +415,7 @@ function Cell({ value, isDraggingOver, canPlace, showPreview, previewColor }: Ce
 
   return (
     <button
-      className={`w-8 h-8 border border-gray-300 ${bgClass} hover:opacity-80 transition-opacity ${
+      className={`w-full h-full border border-gray-300 ${bgClass} hover:opacity-80 transition-opacity ${
         isDraggingOver ? 'ring-2 ring-yellow-500' : ''
       }`}
     />

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { gameRooms } from './[roomId]/route';
+import redis from '@/lib/redis';
 
 type PlayerColor = 0 | 1 | 2 | 3;
 type BoardCell = PlayerColor | null;
@@ -7,11 +7,10 @@ type Board = BoardCell[][];
 
 interface GameRoom {
   roomId: string;
-  players: Map<PlayerColor, { name: string; connected: boolean }>;
+  players: Record<number, { name: string; connected: boolean }>;
   board: Board;
   currentPlayer: PlayerColor;
   moveHistory: Array<{ player: PlayerColor; pieceIndex: number; rotation: number; row: number; col: number }>;
-  usedPieces: Map<PlayerColor, Set<number>>;
 }
 
 function generateRoomId(): string {
@@ -34,41 +33,56 @@ export async function POST(request: NextRequest) {
     
     const gameRoom: GameRoom = {
       roomId,
-      players: new Map([
-        [0, { name: playerName, connected: true }],
-        [1, { name: '', connected: false }],
-        [2, { name: '', connected: false }],
-        [3, { name: '', connected: false }],
-      ]),
+      players: {
+        0: { name: playerName, connected: true },
+        1: { name: '', connected: false },
+        2: { name: '', connected: false },
+        3: { name: '', connected: false },
+      },
       board: initializeBoard(),
       currentPlayer: 0,
       moveHistory: [],
-      usedPieces: new Map([
-        [0, new Set()],
-        [1, new Set()],
-        [2, new Set()],
-        [3, new Set()],
-      ]),
     };
 
-    gameRooms.set(roomId, gameRoom);
+    // Redisに保存（TTL: 24時間）
+    await redis.setex(
+      `game:${roomId}`,
+      86400,
+      JSON.stringify(gameRoom)
+    );
+
+    // 各プレイヤーの使用済みピースを初期化
+    for (let i = 0; i < 4; i++) {
+      await redis.setex(`game:${roomId}:usedPieces:${i}`, 86400, '[]');
+    }
+
     return NextResponse.json({ roomId, playerColor: 0 });
   }
 
   if (action === 'join') {
     const { roomId, playerName } = body;
-    const gameRoom = gameRooms.get(roomId);
-
-    if (!gameRoom) {
+    
+    const gameRoomData = await redis.get(`game:${roomId}`);
+    if (!gameRoomData) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
 
+    const gameRoom: GameRoom = typeof gameRoomData === 'string' ? JSON.parse(gameRoomData) : gameRoomData as GameRoom;
+
     // 最初の空いているプレイヤースロットを探す
     for (let i = 1; i < 4; i++) {
-      const player = gameRoom.players.get(i as PlayerColor);
+      const player = gameRoom.players[i];
       if (player && !player.connected) {
         player.name = playerName;
         player.connected = true;
+        
+        // Redisを更新
+        await redis.setex(
+          `game:${roomId}`,
+          86400,
+          JSON.stringify(gameRoom)
+        );
+        
         return NextResponse.json({ roomId, playerColor: i });
       }
     }

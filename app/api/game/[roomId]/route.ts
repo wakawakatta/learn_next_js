@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import redis from '@/lib/redis';
 
 type PlayerColor = 0 | 1 | 2 | 3;
 type BoardCell = PlayerColor | null;
@@ -6,15 +7,11 @@ type Board = BoardCell[][];
 
 interface GameRoom {
   roomId: string;
-  players: Map<PlayerColor, { name: string; connected: boolean }>;
+  players: Record<number, { name: string; connected: boolean }>;
   board: Board;
   currentPlayer: PlayerColor;
   moveHistory: Array<{ player: PlayerColor; pieceIndex: number; rotation: number; row: number; col: number }>;
-  usedPieces: Map<PlayerColor, Set<number>>;
 }
-
-// メモリ内ゲーム管理（サーバー側で管理）
-export const gameRooms = new Map<string, GameRoom>();
 
 const BOARD_SIZE = 14;
 
@@ -108,18 +105,27 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'roomId required' }, { status: 400 });
     }
 
-    const gameRoom = gameRooms.get(roomId);
-    if (!gameRoom) {
-      console.error(`Room not found: ${roomId}, available rooms: ${Array.from(gameRooms.keys())}`);
+    const gameRoomData = await redis.get(`game:${roomId}`);
+    if (!gameRoomData) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });
     }
 
-    const players = Array.from(gameRoom.players.entries()).map(([color, info]) => ({
-      color,
-      name: info.name,
-      connected: info.connected,
-      usedPieces: gameRoom.usedPieces.get(color as PlayerColor)?.size ?? 0,
-    }));
+    // Redisから返されたデータが既にオブジェクトか文字列かチェック
+    const gameRoom: GameRoom = typeof gameRoomData === 'string' ? JSON.parse(gameRoomData) : gameRoomData as GameRoom;
+
+    // 各プレイヤーの使用済みピースを取得
+    const players = [];
+    for (let i = 0; i < 4; i++) {
+      const usedPiecesData = await redis.get(`game:${roomId}:usedPieces:${i}`);
+      const usedPieces = usedPiecesData ? (typeof usedPiecesData === 'string' ? JSON.parse(usedPiecesData) : usedPiecesData) : [];
+      
+      players.push({
+        color: i,
+        name: gameRoom.players[i]?.name || `Player ${i + 1}`,
+        connected: gameRoom.players[i]?.connected || false,
+        usedPieces: usedPieces.length,
+      });
+    }
 
     return NextResponse.json({
       roomId,
@@ -143,22 +149,22 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'roomId required' }, { status: 400 });
   }
 
-  const gameRoom = gameRooms.get(roomId);
-  if (!gameRoom) {
+  const gameRoomData = await redis.get(`game:${roomId}`);
+  if (!gameRoomData) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   }
+
+  const gameRoom: GameRoom = typeof gameRoomData === 'string' ? JSON.parse(gameRoomData) : gameRoomData as GameRoom;
 
   // 現在のプレイヤーか確認
   if (gameRoom.currentPlayer !== playerColor) {
     return NextResponse.json({ error: 'Not your turn' }, { status: 400 });
   }
 
-  const usedPieces = gameRoom.usedPieces.get(playerColor as PlayerColor);
-  if (!usedPieces) {
-    return NextResponse.json({ error: 'Player not found' }, { status: 400 });
-  }
-
-  const isFirstPiece = usedPieces.size === 0;
+  const usedPiecesData = await redis.get(`game:${roomId}:usedPieces:${playerColor}`);
+  const usedPieces: number[] = usedPiecesData ? (typeof usedPiecesData === 'string' ? JSON.parse(usedPiecesData) : usedPiecesData as number[]) : [];
+  
+  const isFirstPiece = usedPieces.length === 0;
 
   // 配置が有効か確認
   if (!isValidPlacement(gameRoom.board, piece, startRow, startCol, playerColor as PlayerColor, isFirstPiece)) {
@@ -173,7 +179,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   // ピースを使用済みにする
-  usedPieces.add(pieceIndex);
+  usedPieces.push(pieceIndex);
 
   // 次のプレイヤーへ
   gameRoom.currentPlayer = (playerColor + 1) % 4 as PlayerColor;
@@ -186,6 +192,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     row: startRow,
     col: startCol,
   });
+
+  // Redisを更新
+  await Promise.all([
+    redis.setex(`game:${roomId}`, 86400, JSON.stringify(gameRoom)),
+    redis.setex(`game:${roomId}:usedPieces:${playerColor}`, 86400, JSON.stringify(usedPieces)),
+  ]);
 
   return NextResponse.json({ success: true });
 }
