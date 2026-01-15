@@ -225,6 +225,7 @@ export default function Blocks() {
     }
 
     const baseUrl = getBaseUrl();
+    console.log("baseUrl:", baseUrl);
     const response = await fetch(`${baseUrl}/api/game`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -288,7 +289,7 @@ export default function Blocks() {
   }
 
   return (
-    <div className="p-2 md:p-8 bg-gray-100 min-h-screen">
+    <div className="bg-gray-100 min-h-screen">
       <h1 className="text-2xl md:text-4xl font-bold mb-4">Room: {roomId}</h1>
 
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
