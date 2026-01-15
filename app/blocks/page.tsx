@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 
 // Types
 type PlayerColor = 0 | 1 | 2 | 3;
+type Player = { color: number; name: string; connected: boolean; usedPieces: number }
 type BoardCell = PlayerColor | null;
 type Board = BoardCell[][];
 type Piece = Array<[number, number]>; // Array of [row, col] coordinates
@@ -21,30 +22,28 @@ const PIECES: Piece[] = [
   
   // トリミノ（3マス）
   [[0, 0], [0, 1], [0, 2]],
-  [[0, 0], [1, 0], [2, 0]],
+  [[0, 0], [0, 1], [1, 0]],
   
   // テトロミノ（4マス）
   [[0, 0], [0, 1], [0, 2], [0, 3]],
-  [[0, 0], [1, 0], [2, 0], [3, 0]],
-  [[0, 0], [0, 1], [1, 0], [1, 1]],
+  [[0, 0], [0, 1], [0, 2], [1, 0]],
+  [[0, 0], [0, 1], [0, 2], [1, 1]],
   [[0, 0], [0, 1], [1, 1], [1, 2]],
-  [[0, 1], [0, 2], [1, 0], [1, 1]],
-  [[0, 0], [1, 0], [1, 1], [2, 1]],
-  [[0, 1], [1, 0], [1, 1], [2, 0]],
+  [[0, 0], [0, 1], [1, 0], [1, 1]],
   
   // ペントミノ（5マス）12種類
   [[0, 0], [0, 1], [0, 2], [0, 3], [0, 4]],
-  [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]],
-  [[0, 0], [0, 1], [1, 1], [2, 1], [3, 1]],
-  [[0, 1], [1, 0], [1, 1], [2, 0], [3, 0]],
-  [[0, 0], [1, 0], [1, 1], [2, 1], [2, 2]],
+  [[0, 0], [0, 1], [0, 2], [0, 3], [1, 0]],
+  [[0, 0], [0, 1], [0, 2], [0, 3], [1, 1]],
+  [[1, 0], [0, 1], [0, 2], [0, 3], [1, 1]],
+  [[0, 0], [0, 1], [0, 2], [1, 0], [1, 1]],
+  [[0, 0], [0, 1], [0, 2], [1, 0], [1, 2]],
   [[0, 0], [0, 1], [0, 2], [1, 0], [2, 0]],
-  [[0, 0], [1, 0], [2, 0], [2, 1], [2, 2]],
-  [[0, 0], [0, 1], [0, 2], [1, 2], [2, 2]],
-  [[0, 2], [1, 0], [1, 1], [1, 2], [2, 2]],
-  [[0, 0], [1, 0], [2, 0], [3, 0], [3, 1]],
-  [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3]],
-  [[0, 0], [1, 0], [2, 0], [2, 1], [3, 1]],
+  [[0, 0], [0, 1], [0, 2], [1, 1], [2, 1]],
+  [[0, 0], [0, 1], [1, 1], [2, 1], [2, 2]],
+  [[0, 0], [0, 1], [1, 1], [1, 2], [2, 1]],
+  [[0, 0], [0, 1], [1, 1], [1, 2], [2, 2]],
+  [[0, 1], [1, 0], [1, 1], [1, 2], [2, 1]],
 ];
 
 // ピースの回転
@@ -178,6 +177,7 @@ export default function Blocks() {
   const [currentPlayer, setCurrentPlayer] = useState<PlayerColor>(0);
   const [selectedPieceIndex, setSelectedPieceIndex] = useState<number>(0);
   const [selectedRotation, setSelectedRotation] = useState<number>(0);
+  const [selectedFlip, setSelectedFlip] = useState<boolean>(false);
   const [playerPieces, setPlayerPieces] = useState<Map<PlayerColor, Set<number>>>(
     new Map([
       [0, new Set()],
@@ -189,7 +189,14 @@ export default function Blocks() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragPos, setDragPos] = useState<[number, number] | null>(null);
   const [canPlace, setCanPlace] = useState(false);
-  const [players, setPlayers] = useState<Array<{ color: number; name: string; connected: boolean; usedPieces: number }>>([]);
+  const [players, setPlayers] = useState<Array<Player>>([]);
+
+  const allNumbers: number[] = [];
+  for (let i = 0; i < PIECES.length; i++) {
+    allNumbers.push(i);
+  }
+  // 使用していない数字をフィルタリングして新しい配列を作成する
+  const unusedPieces: number[] = allNumbers.filter(number => !playerPieces.get(playerColor)?.has(number));
 
   // ゲーム作成
   async function handleCreateGame() {
@@ -259,76 +266,62 @@ export default function Blocks() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl md:text-4xl font-bold mb-4">Blokus Game - Room: {roomId}</h1>
+    <div className="p-2 md:p-8 bg-gray-100 min-h-screen">
+      <h1 className="text-2xl md:text-4xl font-bold mb-4">Room: {roomId}</h1>
 
       <div className="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
         <div>
-          <h2 className="text-2xl font-semibold mb-2">Current Player: {players[currentPlayer]?.name || `Player ${currentPlayer + 1}`}</h2>
-          <div className={`w-16 h-16 rounded ${PLAYER_COLORS[currentPlayer]}`}></div>
-          
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Players</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 md:mb-8">
             {players.map((p) => (
-              <div key={p.color} className="mb-2 p-2 bg-white rounded">
-                <div className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded ${PLAYER_COLORS[p.color]}`}></div>
-                  <div>
-                    <p className="font-medium">{p.name || `Player ${p.color + 1}`}</p>
-                    <p className="text-sm text-gray-600">Pieces: {p.usedPieces}/21 {p.connected ? '✓' : '(disconnected)'}</p>
-                  </div>
-                </div>
-              </div>
+              <ShowPlayer p={p} currentPlayer={currentPlayer} />
             ))}
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-xl font-semibold mb-2">Your Piece (Player {playerColor + 1})</h3>
-          <PiecePreview piece={getRotatedPiece(selectedPieceIndex, selectedRotation)} playerColor={playerColor} />
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-2">Piece #{selectedPieceIndex + 1}</label>
-            <input
-              type="range"
-              min="0"
-              max={PIECES.length - 1}
-              value={selectedPieceIndex}
-              onChange={(e) => setSelectedPieceIndex(parseInt(e.target.value))}
-              className="w-full"
-            />
-          </div>
-          <div className="mt-4">
-            <label className="block text-sm font-medium mb-2">Rotation</label>
-            <div className="flex gap-2">
-              {[0, 1, 2, 3].map((rot) => (
-                <button
-                  key={rot}
-                  onClick={() => setSelectedRotation(rot)}
-                  className={`px-3 py-1 rounded ${
-                    selectedRotation === rot
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white border border-gray-400'
-                  }`}
-                >
-                  {rot * 90}°
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>
 
-      <GameBoard 
-        board={board} 
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        isDragging={isDragging}
-        dragPos={dragPos}
-        canPlace={canPlace}
-        piece={getRotatedPiece(selectedPieceIndex, selectedRotation)}
-        currentPlayer={currentPlayer}
-      />
+      <div className="flex gap-2 w-full">
+        <div className="w-1/3">
+          <h3 className="text-xl font-semibold mb-2">{playerName}</h3>
+          <PiecePreview piece={getRotatedFlipedPiece(selectedPieceIndex, selectedRotation, selectedFlip)} playerColor={playerColor} size={6} />
+          <div className="mt-4">
+            <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedRotation(selectedRotation + 1 % 4)}
+                  className={`px-1 py-1 rounded bg-white border border-gray-400`}
+                >
+                  Rotation
+                </button>
+                <button
+                  onClick={() => setSelectedFlip(!selectedFlip)}
+                  className={`px-1 py-1 rounded bg-white border border-gray-400`}
+                >
+                  Flip
+                </button>
+            </div>
+          </div>
+          {unusedPieces.map((index) => (
+            <PiecePreviewButton
+              piece={getRotatedFlipedPiece(index, 0, false)}
+              playerColor={playerColor} size={3}
+              onclick={() => setSelectedPieceIndex(index)} />
+          ))}
+
+        </div>
+        <div className="w-2/3">
+          <GameBoard
+            board={board}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            isDragging={isDragging}
+            dragPos={dragPos}
+            canPlace={canPlace}
+            piece={getRotatedFlipedPiece(selectedPieceIndex, selectedRotation, selectedFlip)}
+            currentPlayer={currentPlayer}
+          />
+        </div>
+      </div>
+
 
       <div className="mt-6 flex gap-4">
         <button 
@@ -346,12 +339,17 @@ export default function Blocks() {
         </div>
       </div>
     );
-  
-  function getRotatedPiece(pieceIndex: number, rotation: number): Piece {
+
+  function getRotatedFlipedPiece(pieceIndex: number, rotation: number, flip: boolean): Piece {
     let piece = PIECES[pieceIndex];
     for (let i = 0; i < rotation; i++) {
       piece = rotatePiece(piece);
     }
+
+    if (flip) {
+      piece = flipPiece(piece);
+    }
+
     return piece;
   }
 
@@ -368,8 +366,8 @@ export default function Blocks() {
     if (isDragging) {
       setDragPos([row, col]);
 
-      const rotatedPiece = getRotatedPiece(selectedPieceIndex, selectedRotation);
-      const playerUsedPieces = playerPieces.get(playerColor) || new Set();
+      const rotatedPiece = getRotatedFlipedPiece(selectedPieceIndex, selectedRotation, selectedFlip);
+      const playerUsedPieces = playerPieces.get(playerColor) || new Set<number>();
       const isFirstPiece = playerUsedPieces.size === 0;
       const isValid = isValidPlacement(board, rotatedPiece, row, col, playerColor, isFirstPiece);
       setCanPlace(isValid);
@@ -378,8 +376,8 @@ export default function Blocks() {
 
   async function handleMouseUp(row: number, col: number) {
     if (isDragging && dragPos) {
-      const rotatedPiece = getRotatedPiece(selectedPieceIndex, selectedRotation);
-      const playerUsedPieces = playerPieces.get(playerColor) || new Set();
+      const rotatedPiece = getRotatedFlipedPiece(selectedPieceIndex, selectedRotation, selectedFlip);
+      const playerUsedPieces = playerPieces.get(playerColor) || new Set<number>();
       const isFirstPiece = playerUsedPieces.size === 0;
 
       if (isValidPlacement(board, rotatedPiece, row, col, playerColor, isFirstPiece)) {
@@ -391,6 +389,7 @@ export default function Blocks() {
             playerColor,
             pieceIndex: selectedPieceIndex,
             rotation: selectedRotation,
+            flip: selectedFlip,
             startRow: row,
             startCol: col,
             piece: rotatedPiece,
@@ -400,11 +399,12 @@ export default function Blocks() {
         if (response.ok) {
           // ピースを使用済みにする
           const newPlayerPieces = new Map(playerPieces);
-          playerUsedPieces.add(selectedPieceIndex);
-          newPlayerPieces.set(playerColor, new Set(playerUsedPieces));
+          const newUsedPieces = new Set([...playerUsedPieces, selectedPieceIndex]);
+          newPlayerPieces.set(playerColor, newUsedPieces);
           setPlayerPieces(newPlayerPieces);
           setSelectedRotation(0);
-          
+          setSelectedFlip(false);
+
           // ゲーム状態を更新
           await handleRefreshGame();
         } else {
@@ -417,6 +417,22 @@ export default function Blocks() {
     setDragPos(null);
     setCanPlace(false);
   }
+}
+
+function ShowPlayer({ p, currentPlayer }: { p: Player; currentPlayer: number }) {
+  return (
+    <div
+      key={p.color}
+      className={`p-1 rounded-lg transition-all ${
+        currentPlayer === p.color
+          ? `${PLAYER_COLORS[p.color]} text-white shadow-lg ring-4 ring-black`
+          : `${PLAYER_COLORS[p.color]} text-white opacity-50`
+      }`}
+    >
+      <h3 className="font-bold text-lg">{p.name}</h3>
+      <p className="text-sm">Pieces: {p.usedPieces}/21 {p.connected && '✓'}</p>
+    </div>
+  );
 }
 
 interface GameBoardProps {
@@ -490,6 +506,7 @@ interface CellProps {
 interface PiecePreviewProps {
   piece: Piece;
   playerColor: PlayerColor;
+  size: number
 }
 
 function Cell({ value, isDraggingOver, canPlace, showPreview, previewColor }: CellProps) {
@@ -516,9 +533,19 @@ function Cell({ value, isDraggingOver, canPlace, showPreview, previewColor }: Ce
   );
 }
 
-function PiecePreview({ piece, playerColor }: PiecePreviewProps) {
+function PiecePreviewButton({ piece, playerColor, size, onclick }: PiecePreviewProps & { onclick: () => void; }) {
+  return (
+    <button onClick={onclick}>
+      <PiecePreview piece={piece} playerColor={playerColor} size={size} />
+    </button>
+  );
+}
+
+function PiecePreview({ piece, playerColor, size }: PiecePreviewProps) {
   const maxRow = Math.max(...piece.map(([r]) => r)) + 1;
   const maxCol = Math.max(...piece.map(([, c]) => c)) + 1;
+
+  const name = `w-${size} h-${size} border border-gray-300`;
 
   return (
     <div className="inline-block border-2 border-gray-400 bg-white p-2">
@@ -531,7 +558,7 @@ function PiecePreview({ piece, playerColor }: PiecePreviewProps) {
               .map((_, col) => (
                 <div
                   key={`${row}-${col}`}
-                  className={`w-6 h-6 border border-gray-300 ${
+                  className={`${name} ${
                     piece.some(([r, c]) => r === row && c === col)
                       ? PLAYER_COLORS[playerColor]
                       : 'bg-gray-100'
