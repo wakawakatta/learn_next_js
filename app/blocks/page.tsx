@@ -1,6 +1,25 @@
 "use client";
 import { useState, useEffect } from 'react';
 
+// 環境によってfetchのベースURLを取得
+export const getBaseUrl = () => {
+  // ブラウザ環境（クライアントサイド）の場合は相対パスが使えるため空文字を返す
+  if (typeof window !== 'undefined') return '';
+
+  // Vercelの本番環境（カスタムドメイン設定済みの場合など）
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+
+  // Vercelのプレビュー環境（PRごとの自動生成ドメイン）
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  // ローカル開発環境（vercel dev または npm run dev）
+  return 'http://localhost:3000';
+};
+
 // Types
 type PlayerColor = 0 | 1 | 2 | 3;
 type Player = { color: number; name: string; connected: boolean; usedPieces: number }
@@ -205,7 +224,8 @@ export default function Blocks() {
       return;
     }
 
-    const response = await fetch('/api/game', {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/game`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'create', playerName }),
@@ -224,7 +244,8 @@ export default function Blocks() {
       return;
     }
 
-    const response = await fetch('/api/game', {
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/game`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'join', roomId: inputRoomId, playerName }),
@@ -246,7 +267,8 @@ export default function Blocks() {
   async function handleRefreshGame() {
     if (!roomId) return;
 
-    const response = await fetch(`/api/game/${roomId}`);
+    const baseUrl = getBaseUrl();
+    const response = await fetch(`${baseUrl}/api/game/${roomId}`);
     const data = await response.json();
     
     setBoard(data.board);
@@ -273,7 +295,11 @@ export default function Blocks() {
         <div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 md:mb-8">
             {players.map((p) => (
-              <ShowPlayer p={p} currentPlayer={currentPlayer} />
+              <ShowPlayer 
+                key={p.color}
+                p={p} 
+                currentPlayer={currentPlayer}
+              />
             ))}
           </div>
         </div>
@@ -301,8 +327,10 @@ export default function Blocks() {
           </div>
           {unusedPieces.map((index) => (
             <PiecePreviewButton
+              key={index}
               piece={getRotatedFlipedPiece(index, 0, false)}
-              playerColor={playerColor} size={3}
+              playerColor={playerColor}
+              size={3}
               onclick={() => setSelectedPieceIndex(index)} />
           ))}
 
@@ -382,7 +410,8 @@ export default function Blocks() {
 
       if (isValidPlacement(board, rotatedPiece, row, col, playerColor, isFirstPiece)) {
         // サーバーに手を送信
-        const response = await fetch(`/api/game/${roomId}`, {
+        const baseUrl = getBaseUrl();
+        const response = await fetch(`${baseUrl}/api/game/${roomId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -534,9 +563,31 @@ function Cell({ value, isDraggingOver, canPlace, showPreview, previewColor }: Ce
 }
 
 function PiecePreviewButton({ piece, playerColor, size, onclick }: PiecePreviewProps & { onclick: () => void; }) {
+  const maxRow = Math.max(...piece.map(([r]) => r)) + 1;
+  const maxCol = Math.max(...piece.map(([, c]) => c)) + 1;
+
   return (
     <button onClick={onclick}>
-      <PiecePreview piece={piece} playerColor={playerColor} size={size} />
+      <div className="inline-block border-2 border-gray-400 bg-white p-2">
+        {Array(maxRow)
+          .fill(null)
+          .map((_, row) => (
+            <div key={row} className="flex">
+              {Array(maxCol)
+                .fill(null)
+                .map((_, col) => (
+                  <div
+                    key={`${row}-${col}`}
+                    className={`w-2 h-2 border border-gray-300 ${
+                      piece.some(([r, c]) => r === row && c === col)
+                        ? PLAYER_COLORS[playerColor]
+                        : 'bg-gray-100'
+                    }`}
+                  />
+                ))}
+            </div>
+          ))}
+      </div>
     </button>
   );
 }
@@ -544,8 +595,6 @@ function PiecePreviewButton({ piece, playerColor, size, onclick }: PiecePreviewP
 function PiecePreview({ piece, playerColor, size }: PiecePreviewProps) {
   const maxRow = Math.max(...piece.map(([r]) => r)) + 1;
   const maxCol = Math.max(...piece.map(([, c]) => c)) + 1;
-
-  const name = `w-${size} h-${size} border border-gray-300`;
 
   return (
     <div className="inline-block border-2 border-gray-400 bg-white p-2">
@@ -558,7 +607,7 @@ function PiecePreview({ piece, playerColor, size }: PiecePreviewProps) {
               .map((_, col) => (
                 <div
                   key={`${row}-${col}`}
-                  className={`${name} ${
+                  className={`w-6 h-6 border border-gray-300 ${
                     piece.some(([r, c]) => r === row && c === col)
                       ? PLAYER_COLORS[playerColor]
                       : 'bg-gray-100'
